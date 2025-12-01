@@ -1,0 +1,82 @@
+#version: '3.8'
+
+services:
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: clearml-elastic
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    # Даем достаточно времени на запуск, иначе возникали ошибки
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  mongodb:
+    image: mongo:6.0
+    container_name: clearml-mongo
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7.0
+    container_name: clearml-redis
+
+  # Сервисы ClearML
+
+  apiserver:
+    image: clearml/server:latest
+    container_name: clearml-apiserver
+    command: ["apiserver"]
+    ports:
+      - "8008:8008"
+    volumes:
+      - ./clearml.conf:/opt/clearml/config/clearml.conf
+    environment:
+      CLEARML_ELASTIC_SERVICE_HOST: elasticsearch
+      CLEARML_MONGODB_SERVICE_HOST: mongodb
+      CLEARML_REDIS_SERVICE_HOST: redis
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_started
+
+  webserver:
+    image: clearml/server:latest
+    container_name: clearml-webserver
+    command: ["webserver"]
+    ports:
+      - "8080:80"
+    volumes:
+      - ./clearml.conf:/opt/clearml/config/clearml.conf
+    environment:
+      CLEARML_API_HOST: http://apiserver:8008
+    depends_on:
+      - apiserver
+
+  fileserver:
+    image: clearml/server:latest
+    container_name: clearml-fileserver
+    command: ["fileserver"]
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./clearml.conf:/opt/clearml/config/clearml.conf
+      - fileserver_data:/mnt/fileserver
+    environment:
+      CLEARML_API_HOST: http://apiserver:8008
+    depends_on:
+      - apiserver
+
+volumes:
+  es_data:
+  mongo_data:
+  fileserver_data:

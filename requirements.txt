@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+scikit-learn
+lightgbm
+pandas
+numpy
+clearml
+joblib
+pydantic
+requests
+optuna

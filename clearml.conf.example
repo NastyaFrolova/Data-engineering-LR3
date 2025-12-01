@@ -1,0 +1,14 @@
+api {
+    listen_address: 0.0.0.0:8008
+    secret_key: "your_secret_key"
+}
+
+files {
+    listen_address: 0.0.0.0:8081
+    storage_path: /mnt/fileserver
+}
+
+web {
+    listen_address: 0.0.0.0:80
+    api_server: http://apiserver:8008
+}

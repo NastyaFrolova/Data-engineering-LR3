@@ -1,0 +1,135 @@
+{
+  "name": "Weather",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 17,
+              "triggerAtMinute": null
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f793cdc0-f9e3-4959-bfd0-9e63d011f8ff",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/predict",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"cities\": [\"Москва\"]\n}\n",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "03d5a143-3aeb-47eb-a367-0601a05f35e6",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "/** @type {{json: {text: string}}[]} */\nconst messages = [];\n\nconst results = items[0].json.results;\n\nresults.forEach(r => {\n  let msg = `Прогноз погоды для г. ${r.city}\\n\\n`;\n\n  r.forecast.forEach(day => {\n    const date = new Date(day.date).toLocaleDateString('ru-RU', {\n      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'\n    });\n    msg += `🗓️ ${date}\\n`;\n    msg += `🌡️ Макс: ${day.predicted_temperature_max}°C\\n`;\n    msg += `📉 Интервал: ${day.confidence_interval_low}°C ... ${day.confidence_interval_high}°C\\n\\n`;\n  });\n\n  messages.push({ json: { text: msg } });\n});\n\nreturn messages;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "612f2736-41d8-4401-870f-17adc3923090",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "your_chat_id",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "fa19ab95-358c-4af6-8eeb-37987d9cb266",
+      "name": "Send a text message",
+      "webhookId": "2e8bbdfe-25b1-4a9f-92cb-6e2e48af0718",
+      "credentials": {
+        "telegramApi": {
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b1cb1ab6-e756-4feb-bf3a-578ad20aafbb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b6120ec3cabaa4bdd2d60591cdb596425c74a699c1da79acd928660e1df7376d"
+  },
+  "id": "...",
+  "tags": []
+}
